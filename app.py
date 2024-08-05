@@ -12,7 +12,7 @@ import streamlit as st
 
 __import__('pysqlite3')
 import sys 
-sys.modules['sqlite3']=sys.modules.pop('psqlite3')
+sys.modules['sqlite3']=sys.modules.pop('pysqlite3')
 
 HF_TOKEN = st.secrets['HUGGINGFACE_ACCESS_TnHF_TOKENKEN']
 os.environ['HUGGINGFACE_API_TOKEN']=HF_TOKEN
