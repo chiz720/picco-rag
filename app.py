@@ -6,12 +6,13 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain.schema import StrOutputParser
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain_community.llms import HuggingFaceHub
 import os 
 import streamlit as st
 
-#HF_TOKEN = st.secrets['HUGGINGFACE_ACCESS_TnHF_TOKENKEN']
-#os.environ['HUGGINGFACE_API_TOKEN']=HF_TOKEN
-HF_TOKEN = "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"
+HF_TOKEN = st.secrets['HUGGINGFACE_ACCESS_TnHF_TOKENKEN']
+os.environ['HUGGINGFACE_API_TOKEN']=HF_TOKEN
+
 
 # Initialize embeddings
 embeddings = HuggingFaceInferenceAPIEmbeddings(
@@ -24,7 +25,7 @@ vectordb = Chroma(persist_directory="./db", embedding_function=embeddings)
 
 print("Triggering the retriever")
 # Initialize retriever
-retriever = vectordb.as_retriever(search_kwargs={"k": 2})
+retriever = vectordb.as_retriever()
 
 print("Adding prompt....")
 # Define prompt template
@@ -40,24 +41,26 @@ Query: {question}
 Remember only return AI answer
 Assistant:
 """
-prompt = ChatPromptTemplate.from_template(template)
-
-print("Running Model Ollama...")
-# Initialize LLM
-llm = Ollama(model="llama2", callback_manager=CallbackManager([StreamingStdOutCallbackHandler]))
-
-# Define chain
-chain = (
-    {
-        "context": retriever.with_config(run_name="Docs"),
-        "question": RunnablePassthrough(),
+llm = HuggingFaceHub(
+    repo_id = "chikZ/local_rag",
+    model_kwargs = {
+        "max_new_tokens":512,
+        "repition_penalty":1.1,
+        "temperature":0.5,
+        "top_p":0.9,
+        "return_full_text":False
     }
-    | prompt
-    | llm 
-    | StrOutputParser()
 )
 
-# Invoke chain
-print("AI Response")
-query = "What parameters can be measured using PiCCO? State the physiological reference ranges"
-print(chain.invoke(query))
+prompt = ChatPromptTemplate.from_template(template)
+output_parser = StrOutputParser()
+
+chain = ({
+    "contex": retriever.with_config(run_name="Docs"),
+    "question": RunnablePassthrough()
+}
+| prompt
+| llm
+| output_parser)
+
+st.title("Picco Rag")
