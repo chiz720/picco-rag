@@ -10,7 +10,7 @@ from langchain_community.llms import HuggingFaceHub
 import os 
 import streamlit as st
 
-__import__('psqlite3')
+__import__('pysqlite3')
 import sys 
 sys.modules['sqlite3']=sys.modules.pop('psqlite3')
 
