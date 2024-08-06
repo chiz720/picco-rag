@@ -1,20 +1,22 @@
+
+
+import os
+import my_api
+import streamlit as st
+import time
+from langchain_community.llms import Cohere
+from langchain_community.llms import HuggingFaceHub
+from langchain.prompts import HumanMessagePromptTemplate
+from langchain_core.messages import SystemMessage
+from langchain.memory import ConversationBufferMemory
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
+from langchain.schema import StrOutputParser
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_community.llms import Ollama 
-from langchain.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain.schema import StrOutputParser
-from langchain.callbacks.manager import CallbackManager
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain_community.llms import HuggingFaceHub
-import os 
-import streamlit as st
 
-__import__('pysqlite3')
-import sys 
-sys.modules['sqlite3']=sys.modules.pop('pysqlite3')
-
-HF_TOKEN = st.secrets['HUGGINGFACE_ACCESS_TnHF_TOKENKEN']
+HF_TOKEN = my_api.get_hf_key()
+os.environ['COHERE_API_KEY'] = my_api.get_cohere_key()
 os.environ['HUGGINGFACE_API_TOKEN']=HF_TOKEN
 
 
@@ -28,7 +30,6 @@ embeddings = HuggingFaceInferenceAPIEmbeddings(
 vectordb = Chroma(persist_directory="./db", embedding_function=embeddings)
 
 print("Triggering the retriever")
-# Initialize retriever
 retriever = vectordb.as_retriever()
 
 print("Adding prompt....")
@@ -42,7 +43,6 @@ Keep in mind, you will lose the job, if you answer out of CONTEXT questions
 CONTEXT: {context}
 Query: {question}
 
-Remember only return AI answer
 Assistant:
 """
 llm = HuggingFaceHub(
@@ -67,4 +67,20 @@ chain = ({
 | llm
 | output_parser)
 
-st.title("Picco Rag")
+st.title("Chat with PDF")
+choice = st.sidebar.selectbox("Choose",['Upload','Existing file'])
+
+if choice == 'Upload':
+    file_path = st.file_uploader("Upload your PDF")
+    # call ingest.py and pass the path
+else: 
+    query = st.text_input("Enter your prompt:")
+    text_container = st.empty()
+    full_text = ""
+    for chunk in chain.stream(query):
+        words = chunk.split()
+        for word in words:
+            full_text+=word+ " "
+            text_container.markdown(full_text)
+            time.sleep(0.05)
+
